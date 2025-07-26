@@ -18,3 +18,14 @@ class NullMaskedLoRALinear(nn.Module):
             P = torch.eye(self.in_features, device=x.device) - v @ v.T
             delta = delta @ P  # Project out sensitive direction
         return x @ delta.T
+        
+class AdapterModel(nn.Module):
+    def __init__(self, base_model, sensitive_basis):
+        super().__init__()
+        self.base = base_model
+        self.null_lora = NullSpaceLoRALinear(768, 768, r=8, V_sensitive=sensitive_basis)
+
+    def forward(self, x):
+        h = self.base(x)
+        h += self.null_lora(h)  # residual update in null-space
+        return h
